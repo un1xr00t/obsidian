@@ -1,12 +1,12 @@
 """
-MOLOCH Server — Local storage backend for MOLOCH AI interface
+OBSIDIAN Server — Local storage backend for OBSIDIAN AI interface
 Stores chats, projects, and files in SQLite + filesystem.
 
 Install deps:
     pip install fastapi uvicorn
 
 Run:
-    python moloch_server.py
+    python obsidian_server.py
 
 Then open: http://localhost:8000
 """
@@ -15,10 +15,6 @@ import sqlite3
 import json
 import os
 import sys
-import threading
-import time
-import urllib.request
-import urllib.error
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,21 +24,13 @@ from typing import Any, Optional
 import uvicorn
 
 # ── Paths ────────────────────────────────────────────────────
-DATA_DIR  = Path.home() / "moloch"
-DB_PATH   = DATA_DIR / "moloch.db"
+DATA_DIR  = Path.home() / "obsidian"
+DB_PATH   = DATA_DIR / "obsidian.db"
 FILES_DIR = DATA_DIR / "files"
-HTML_PATH = Path(__file__).parent / "moloch.html"
+HTML_PATH = Path(__file__).parent / "obsidian.html"
 
-# ── Sync config ──────────────────────────────────────────────
-# Set MOLOCH_VPS_URL env var on local machines to enable sync.
-# Leave empty on the VPS itself — it IS the hub.
-VPS_URL = os.environ.get("MOLOCH_VPS_URL", "").rstrip("/")
-SYNC_INTERVAL = int(os.environ.get("MOLOCH_SYNC_INTERVAL", "300"))  # seconds
-
-_sync_status = {"state": "idle", "last": None, "error": None}
-
-
-app = FastAPI(title="MOLOCH Server", version="1.0")
+# ── App setup ────────────────────────────────────────────────
+app = FastAPI(title="OBSIDIAN Server", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,19 +68,19 @@ def init_db():
     """)
     conn.commit()
     conn.close()
-    print(f"[MOLOCH] Database: {DB_PATH}")
+    print(f"[OBSIDIAN] Database: {DB_PATH}")
 
 # ── Health ────────────────────────────────────────────────────
 @app.get("/health")
 def health():
     return {"status": "online", "version": "1.0"}
 
-# ── Serve moloch.html ─────────────────────────────────────────
+# ── Serve obsidian.html ─────────────────────────────────────────
 @app.get("/")
 def serve_ui():
     if HTML_PATH.exists():
         return FileResponse(HTML_PATH, media_type="text/html")
-    return JSONResponse({"error": "moloch.html not found next to moloch_server.py"}, status_code=404)
+    return JSONResponse({"error": "obsidian.html not found next to obsidian_server.py"}, status_code=404)
 
 # ── Chats ─────────────────────────────────────────────────────
 @app.get("/chats")
@@ -204,9 +192,6 @@ async def save_settings(request: Request):
 # ── Bulk export / import ──────────────────────────────────────
 @app.get("/export")
 def export_all():
-    return _get_export_data()
-
-def _get_export_data():
     conn = get_db()
     chat_rows = conn.execute("SELECT * FROM chats").fetchall()
     proj_rows = conn.execute("SELECT data FROM projects").fetchall()
@@ -229,84 +214,6 @@ def _get_export_data():
         "projects": projects_out,
         "settings": json.loads(settings_row["data"]) if settings_row else {}
     }
-
-def _merge_remote(remote: dict):
-    """Merge remote data into local DB — newer updated timestamp wins."""
-    conn = get_db()
-    merged_chats = 0
-    merged_projects = 0
-
-    for rid, rc in remote.get("chats", {}).items():
-        local = conn.execute("SELECT updated FROM chats WHERE id=?", (rid,)).fetchone()
-        if not local or local["updated"] < rc.get("updated", 0):
-            conn.execute(
-                "INSERT OR REPLACE INTO chats (id,title,created,updated,history) VALUES (?,?,?,?,?)",
-                (rc["id"], rc.get("title",""), rc.get("created",0), rc.get("updated",0),
-                 json.dumps(rc.get("history",[])))
-            )
-            merged_chats += 1
-
-    for rid, rp in remote.get("projects", {}).items():
-        local = conn.execute("SELECT data FROM projects WHERE id=?", (rid,)).fetchone()
-        if local:
-            lp = json.loads(local["data"])
-            if lp.get("updated", 0) >= rp.get("updated", 0):
-                continue
-        conn.execute(
-            "INSERT OR REPLACE INTO projects (id,data) VALUES (?,?)",
-            (rp["id"], json.dumps(rp))
-        )
-        merged_projects += 1
-
-    conn.commit()
-    conn.close()
-    return merged_chats, merged_projects
-
-def _push_to_vps(data: dict):
-    payload = json.dumps(data).encode()
-    req = urllib.request.Request(
-        f"{VPS_URL}/import", data=payload,
-        headers={"Content-Type": "application/json"}, method="POST"
-    )
-    urllib.request.urlopen(req, timeout=10)
-
-def sync_now():
-    if not VPS_URL:
-        return {"ok": False, "reason": "MOLOCH_VPS_URL not set — this is the hub"}
-    global _sync_status
-    _sync_status["state"] = "syncing"
-    try:
-        # Pull from VPS
-        res = urllib.request.urlopen(f"{VPS_URL}/export", timeout=8)
-        remote = json.loads(res.read())
-        mc, mp = _merge_remote(remote)
-
-        # Push local (now merged) back to VPS
-        _push_to_vps(_get_export_data())
-
-        _sync_status = {"state": "ok", "last": int(time.time()), "error": None}
-        print(f"[MOLOCH] Sync OK — merged {mc} chats, {mp} projects")
-        return {"ok": True, "merged_chats": mc, "merged_projects": mp}
-    except Exception as e:
-        _sync_status = {"state": "error", "last": int(time.time()), "error": str(e)}
-        print(f"[MOLOCH] Sync failed: {e}")
-        return {"ok": False, "reason": str(e)}
-
-def _sync_loop():
-    time.sleep(15)  # let server fully start
-    while True:
-        sync_now()
-        time.sleep(SYNC_INTERVAL)
-
-# ── Sync endpoints ────────────────────────────────────────────
-@app.get("/sync/status")
-def sync_status():
-    return {**_sync_status, "vps_url": VPS_URL or None, "interval": SYNC_INTERVAL}
-
-@app.post("/sync/now")
-def sync_trigger():
-    return sync_now()
-
 
 @app.post("/import")
 async def import_all(request: Request):
@@ -343,14 +250,8 @@ async def import_all(request: Request):
 # ── Startup ───────────────────────────────────────────────────
 if __name__ == "__main__":
     init_db()
-    print("[MOLOCH] Server running at http://localhost:8000")
-    print("[MOLOCH] Open http://localhost:8000 in your browser")
+    print("[OBSIDIAN] Server running at http://localhost:8000")
+    print("[OBSIDIAN] Open http://localhost:8000 in your browser")
     if not HTML_PATH.exists():
-        print(f"[MOLOCH] WARNING: moloch.html not found at {HTML_PATH}")
-    if VPS_URL:
-        print(f"[MOLOCH] Sync hub: {VPS_URL} (every {SYNC_INTERVAL}s)")
-        t = threading.Thread(target=_sync_loop, daemon=True)
-        t.start()
-    else:
-        print("[MOLOCH] No MOLOCH_VPS_URL set — running as hub (no sync)")
+        print(f"[OBSIDIAN] WARNING: obsidian.html not found at {HTML_PATH}")
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")

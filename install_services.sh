@@ -1,20 +1,20 @@
 #!/bin/bash
-# MOLOCH + Ollama service installer
+# OBSIDIAN + Ollama service installer
 # Run as your normal user (not root) — sudo is used only where needed
 
 set -e
 
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
-APP_DIR="$HOME_DIR/moloch-app"
+APP_DIR="$HOME_DIR/obsidian-app"
 
 echo ""
-echo "  ███╗   ███╗ ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗"
-echo "  ████╗ ████║██╔═══██╗██║     ██╔═══██╗██╔════╝██║  ██║"
-echo "  ██╔████╔██║██║   ██║██║     ██║   ██║██║     ███████║"
-echo "  ██║╚██╔╝██║██║   ██║██║     ██║   ██║██║     ██╔══██║"
-echo "  ██║ ╚═╝ ██║╚██████╔╝███████╗╚██████╔╝╚██████╗██║  ██║"
-echo "  ╚═╝     ╚═╝ ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝"
+echo "  ██████╗ ██████╗ ███████╗██╗██████╗ ██╗ █████╗ ███╗   ██╗"
+echo " ██╔═══██╗██╔══██╗██╔════╝██║██╔══██╗██║██╔══██╗████╗  ██║"
+echo " ██║   ██║██████╔╝███████╗██║██║  ██║██║███████║██╔██╗ ██║"
+echo " ██║   ██║██╔══██╗╚════██║██║██║  ██║██║██╔══██║██║╚██╗██║"
+echo " ╚██████╔╝██████╔╝███████║██║██████╔╝██║██║  ██║██║ ╚████║"
+echo "  ╚═════╝ ╚═════╝ ╚══════╝╚═╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝"
 echo ""
 echo "  Service Installer"
 echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -25,13 +25,13 @@ echo "[1/6] Creating app directory at $APP_DIR..."
 mkdir -p "$APP_DIR"
 
 # Copy files if they exist in current directory
-if [ -f "./moloch.html" ]; then
-    cp ./moloch.html "$APP_DIR/"
-    echo "      Copied moloch.html"
+if [ -f "./obsidian.html" ]; then
+    cp ./obsidian.html "$APP_DIR/"
+    echo "      Copied obsidian.html"
 fi
-if [ -f "./moloch_server.py" ]; then
-    cp ./moloch_server.py "$APP_DIR/"
-    echo "      Copied moloch_server.py"
+if [ -f "./obsidian_server.py" ]; then
+    cp ./obsidian_server.py "$APP_DIR/"
+    echo "      Copied obsidian_server.py"
 fi
 
 # ── 2. Install Python deps ────────────────────────────────────
@@ -72,20 +72,20 @@ WantedBy=multi-user.target
 EOF
 fi
 
-# ── 4. Write MOLOCH service ───────────────────────────────────
-echo "[4/6] Installing MOLOCH server service..."
+# ── 4. Write OBSIDIAN service ───────────────────────────────────
+echo "[4/6] Installing OBSIDIAN server service..."
 PYTHON_PATH=$(which python3)
 
-sudo tee /etc/systemd/system/moloch-server.service > /dev/null << EOF
+sudo tee /etc/systemd/system/obsidian-server.service > /dev/null << EOF
 [Unit]
-Description=MOLOCH AI Interface Server
+Description=OBSIDIAN AI Interface Server
 After=network.target
 
 [Service]
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$APP_DIR
-ExecStart=$PYTHON_PATH $APP_DIR/moloch_server.py
+ExecStart=$PYTHON_PATH $APP_DIR/obsidian_server.py
 Restart=always
 RestartSec=5
 Environment="PYTHONUNBUFFERED=1"
@@ -98,12 +98,12 @@ EOF
 echo "[5/6] Enabling services to start on boot..."
 sudo systemctl daemon-reload
 sudo systemctl enable ollama.service
-sudo systemctl enable moloch-server.service
+sudo systemctl enable obsidian-server.service
 
 echo "[6/6] Starting services now..."
 sudo systemctl restart ollama.service
 sleep 2
-sudo systemctl start moloch-server.service
+sudo systemctl start obsidian-server.service
 
 # ── Done ──────────────────────────────────────────────────────
 echo ""
@@ -111,24 +111,24 @@ echo "  ━━━━━━━━━━━━━━━━━━━━━━━━
 echo "  DONE"
 echo ""
 echo "  Ollama:  http://localhost:11434"
-echo "  MOLOCH:  http://localhost:8000"
+echo "  OBSIDIAN:  http://localhost:8000"
 echo ""
 echo "  Useful commands:"
-echo "    sudo systemctl status moloch-server   # check status"
+echo "    sudo systemctl status obsidian-server   # check status"
 echo "    sudo systemctl status ollama          # check ollama"
-echo "    sudo journalctl -u moloch-server -f   # live logs"
+echo "    sudo journalctl -u obsidian-server -f   # live logs"
 echo "    sudo journalctl -u ollama -f          # ollama logs"
-echo "    sudo systemctl restart moloch-server  # restart"
+echo "    sudo systemctl restart obsidian-server  # restart"
 echo ""
 echo "  App files: $APP_DIR"
-echo "  Data:      ~/moloch/moloch.db"
+echo "  Data:      ~/obsidian/obsidian.db"
 echo ""
 
 # Check if services are actually running
-if systemctl is-active --quiet moloch-server; then
-    echo "  [OK] MOLOCH server is running"
+if systemctl is-active --quiet obsidian-server; then
+    echo "  [OK] OBSIDIAN server is running"
 else
-    echo "  [!!] MOLOCH server failed to start — check: sudo journalctl -u moloch-server -n 50"
+    echo "  [!!] OBSIDIAN server failed to start — check: sudo journalctl -u obsidian-server -n 50"
 fi
 
 if systemctl is-active --quiet ollama; then
