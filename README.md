@@ -1,19 +1,19 @@
-# MOLOCH // Unrestricted Local AI Interface
+# OBSIDIAN // Unrestricted Local AI Interface
 
-<img width="789" height="583" alt="image" src="https://github.com/user-attachments/assets/90995878-ffaf-4d42-be0f-d4f6e7c253f8" />
+(INSERT NEW IMAGE)
 
-> *A single-file, self-hosted AI interface that connects to [Ollama](https://ollama.com) for fully local, private, unrestricted AI. No cloud. No API keys. No filters. Your hardware, your models, your data.
+> A single-file, self-hosted AI interface that connects to [Ollama](https://ollama.com) for fully local, private, unrestricted AI. No cloud. No API keys. No filters. Your hardware, your models, your data.
 
 ---
 
 ## Features
 
-- Single `moloch.html` file — no build step, no framework
+- Single `obsidian.html` file — no build step, no framework
 - Projects system with persistent memory, file attachments, and custom system instructions
 - Auto artifact panel for code — detects complete files, shows syntax-highlighted split view
 - AI memory extraction — automatically pulls key facts from conversations every 4 exchanges
 - Full chat history with session management
-- FastAPI + SQLite backend (`moloch_server.py`) for persistence across devices
+- FastAPI + SQLite backend (`obsidian_server.py`) for persistence across devices
 - Works fully offline (no internet required once models are pulled)
 - Multi-device support via SSH reverse tunnel
 
@@ -49,8 +49,8 @@ ollama pull qwen2.5-coder:14b
 ### 3. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/moloch.git
-cd moloch
+git clone https://github.com/un1xr00t/obsidian.git
+cd obsidian
 ```
 
 ### 4. Install Python dependencies
@@ -62,7 +62,7 @@ pip install fastapi uvicorn
 ### 5. Run the server
 
 ```bash
-python3 moloch_server.py
+python3 obsidian_server.py
 ```
 
 Open `http://localhost:8000` in your browser. Done.
@@ -71,7 +71,7 @@ Open `http://localhost:8000` in your browser. Done.
 
 ## Model Recommendations by Hardware
 
-MOLOCH works with any model Ollama supports. Here's a general guide:
+OBSIDIAN works with any model Ollama supports. Here's a general guide:
 
 ### Low-end (8–16GB VRAM or RAM-only)
 ```bash
@@ -101,7 +101,7 @@ ollama pull dolphin-mixtral:8x22b
 
 ## Auto-Install (Linux / systemd)
 
-The included `install_services.sh` sets up Ollama and MOLOCH as systemd services that start on boot.
+The included `install_services.sh` sets up Ollama and OBSIDIAN as systemd services that start on boot.
 
 ```bash
 chmod +x install_services.sh
@@ -109,20 +109,20 @@ chmod +x install_services.sh
 ```
 
 This will:
-- Copy `moloch.html` and `moloch_server.py` to `~/moloch-app/`
+- Copy `obsidian.html` and `obsidian_server.py` to `~/obsidian-app/`
 - Install Python dependencies
 - Create and enable `ollama.service` (or patch existing)
-- Create and enable `moloch-server.service`
+- Create and enable `obsidian-server.service`
 - Start both services immediately
 
 ### Useful commands after install
 
 ```bash
-sudo systemctl status moloch-server
+sudo systemctl status obsidian-server
 sudo systemctl status ollama
-sudo journalctl -u moloch-server -f    # live logs
+sudo journalctl -u obsidian-server -f    # live logs
 sudo journalctl -u ollama -f
-sudo systemctl restart moloch-server
+sudo systemctl restart obsidian-server
 ```
 
 ---
@@ -136,29 +136,29 @@ brew install ollama
 brew services start ollama
 ```
 
-### moloch_server.py (via tmux — recommended)
+### obsidian_server.py (via tmux — recommended)
 
 ```bash
 # Create a venv and install deps
-python3 -m venv ~/moloch-venv
-~/moloch-venv/bin/pip install fastapi uvicorn
+python3 -m venv ~/obsidian-venv
+~/obsidian-venv/bin/pip install fastapi uvicorn
 
 # Start in a persistent tmux session
 brew install tmux
-tmux new-session -d -s moloch '~/moloch-venv/bin/python3 ~/moloch-app/moloch_server.py'
+tmux new-session -d -s obsidian '~/obsidian-venv/bin/python3 ~/obsidian-app/obsidian_server.py'
 ```
 
 Add to `~/.zshrc` for auto-start on login:
 ```bash
-# MOLOCH server auto-start
+# OBSIDIAN server auto-start
 if ! lsof -ti :8000 > /dev/null 2>&1; then
-  tmux new-session -d -s moloch "~/moloch-venv/bin/python3 ~/moloch-app/moloch_server.py" 2>/dev/null
+  tmux new-session -d -s obsidian "~/obsidian-venv/bin/python3 ~/obsidian-app/obsidian_server.py" 2>/dev/null
 fi
 ```
 
 Verify everything is running:
 ```bash
-curl http://localhost:8000/health   # MOLOCH server
+curl http://localhost:8000/health   # OBSIDIAN server
 curl http://localhost:11434         # Ollama
 ```
 
@@ -166,14 +166,14 @@ curl http://localhost:11434         # Ollama
 
 ## Multi-Device Setup (VPS + SSH Tunnel)
 
-This setup lets you access MOLOCH from any browser (phone, tablet, remote machine) while keeping all AI inference on your local hardware.
+This setup lets you access OBSIDIAN from any browser (phone, tablet, remote machine) while keeping all AI inference on your local hardware.
 
 ### Architecture
 
 ```
 [Your Machine] ──autossh──▶ [VPS] ──nginx──▶ [Browser anywhere]
   Ollama :11434                 :11434 (tunneled)
-  moloch_server :8000           nginx serves moloch.html
+  obsidian_server :8000           nginx serves obsidian.html
 ```
 
 ### VPS Requirements
@@ -197,17 +197,17 @@ ufw allow 80
 ufw allow 443
 ufw enable
 
-# Configure nginx — create /etc/nginx/sites-available/moloch
-cat > /etc/nginx/sites-available/moloch << 'EOF'
+# Configure nginx — create /etc/nginx/sites-available/obsidian
+cat > /etc/nginx/sites-available/obsidian << 'EOF'
 server {
     listen 80;
     server_name your.domain.com;
 
     # Serve the UI
     location / {
-        root /var/www/moloch;
-        index moloch.html;
-        try_files $uri $uri/ /moloch.html;
+        root /var/www/obsidian;
+        index obsidian.html;
+        try_files $uri $uri/ /obsidian.html;
     }
 
     # Proxy Ollama API (tunneled from local machine)
@@ -222,15 +222,15 @@ server {
 }
 EOF
 
-ln -s /etc/nginx/sites-available/moloch /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/obsidian /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 
 # Get SSL cert
 certbot --nginx -d your.domain.com
 
-# Create web root and copy moloch.html
-mkdir -p /var/www/moloch
-# (scp moloch.html here from your local machine)
+# Create web root and copy obsidian.html
+mkdir -p /var/www/obsidian
+# (scp obsidian.html here from your local machine)
 ```
 
 ### SSH Tunnel (Linux — systemd)
@@ -243,9 +243,9 @@ sudo apt install autossh    # or: brew install autossh on macOS
 Create the tunnel service on your **local machine**:
 
 ```bash
-sudo tee /etc/systemd/system/moloch-tunnel.service > /dev/null << EOF
+sudo tee /etc/systemd/system/obsidian-tunnel.service > /dev/null << EOF
 [Unit]
-Description=MOLOCH SSH Reverse Tunnel
+Description=OBSIDIAN SSH Reverse Tunnel
 After=network.target
 
 [Service]
@@ -267,20 +267,20 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable moloch-tunnel
-sudo systemctl start moloch-tunnel
+sudo systemctl enable obsidian-tunnel
+sudo systemctl start obsidian-tunnel
 ```
 
 ### SSH Tunnel (macOS — launchd)
 
 ```bash
-cat > ~/Library/LaunchAgents/com.moloch.tunnel.plist << 'EOF'
+cat > ~/Library/LaunchAgents/com.obsidian.tunnel.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.moloch.tunnel</string>
+    <string>com.obsidian.tunnel</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/ssh</string>
@@ -296,20 +296,20 @@ cat > ~/Library/LaunchAgents/com.moloch.tunnel.plist << 'EOF'
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/moloch-tunnel.log</string>
+    <string>/tmp/obsidian-tunnel.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/moloch-tunnel.err</string>
+    <string>/tmp/obsidian-tunnel.err</string>
 </dict>
 </plist>
 EOF
 
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.moloch.tunnel.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.obsidian.tunnel.plist
 ```
 
-### Deploy updated moloch.html to VPS
+### Deploy updated obsidian.html to VPS
 
 ```bash
-scp ~/moloch-app/moloch.html user@your-vps-ip:/var/www/moloch/moloch.html
+scp ~/obsidian-app/obsidian.html user@your-vps-ip:/var/www/obsidian/obsidian.html
 ```
 
 No service restart needed — nginx serves it as a static file.
@@ -318,7 +318,7 @@ No service restart needed — nginx serves it as a static file.
 
 ## Data & Privacy
 
-- All chat history and project data is stored locally in SQLite (`~/moloch/moloch.db`)
+- All chat history and project data is stored locally in SQLite (`~/obsidian/obsidian.db`)
 - Nothing is sent to any external service
 - Ollama runs entirely on your hardware
 - The VPS only acts as a reverse proxy — it never sees your data, only tunneled API calls between your browser and your machine
@@ -336,22 +336,22 @@ chmod +x vps-harden.sh
 ```
 
 This sets up:
-- **nginx** — serves `moloch.html` and proxies `/api/` to Ollama (via tunnel)
+- **nginx** — serves `obsidian.html` and proxies `/api/` to Ollama (via tunnel)
 - **SSL** — certbot + Let's Encrypt, auto-redirect HTTP to HTTPS
 - **UFW** — firewall, allows only SSH/80/443
 - **fail2ban** — SSH brute force protection
 - **SSH hardening** — disables password auth, root key-only
 
-After running, copy `moloch.html` to `/var/www/moloch/moloch.html` and set up the SSH tunnel from your local machine (see Multi-Device Setup above).
+After running, copy `obsidian.html` to `/var/www/obsidian/obsidian.html` and set up the SSH tunnel from your local machine (see Multi-Device Setup above).
 
 ---
 
 ## File Structure
 
 ```
-moloch/
-├── moloch.html          # The entire frontend (single file)
-├── moloch_server.py     # FastAPI backend + SQLite persistence
+obsidian/
+├── obsidian.html          # The entire frontend (single file)
+├── obsidian_server.py     # FastAPI backend + SQLite persistence
 ├── install_services.sh  # Linux systemd auto-installer (local machine)
 ├── vps-harden.sh        # VPS hardening + nginx setup (run on VPS as root)
 └── README.md
