@@ -325,13 +325,35 @@ No service restart needed — nginx serves it as a static file.
 
 ---
 
+## VPS Hardening
+
+If you're setting up a VPS for remote access, the included `vps-harden.sh` handles everything in one shot:
+
+```bash
+# Run as root on a fresh Ubuntu 22.04/24.04 VPS
+chmod +x vps-harden.sh
+./vps-harden.sh your.domain.com your@email.com
+```
+
+This sets up:
+- **nginx** — serves `moloch.html` and proxies `/api/` to Ollama (via tunnel)
+- **SSL** — certbot + Let's Encrypt, auto-redirect HTTP to HTTPS
+- **UFW** — firewall, allows only SSH/80/443
+- **fail2ban** — SSH brute force protection
+- **SSH hardening** — disables password auth, root key-only
+
+After running, copy `moloch.html` to `/var/www/moloch/moloch.html` and set up the SSH tunnel from your local machine (see Multi-Device Setup above).
+
+---
+
 ## File Structure
 
 ```
 moloch/
 ├── moloch.html          # The entire frontend (single file)
 ├── moloch_server.py     # FastAPI backend + SQLite persistence
-├── install_services.sh  # Linux systemd auto-installer
+├── install_services.sh  # Linux systemd auto-installer (local machine)
+├── vps-harden.sh        # VPS hardening + nginx setup (run on VPS as root)
 └── README.md
 ```
 
